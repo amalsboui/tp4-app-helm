@@ -86,3 +86,4 @@ jobs:
           cd gitops
           git config user.email "ci@bot" && git config user.name "ci-bot"
           git add . && git commit -m "deploy $TAG" && git push
+          
