@@ -16,7 +16,9 @@ jobs:
 
       # 2. Check the Helm chart
       - name: Helm lint
-        run: helm lint ./chart
+        run: |
+          helm lint ./chart
+          helm template ./chart > /dev/null
 
       # 3. Run the unit tests + measure coverage
       - name: Unit tests
