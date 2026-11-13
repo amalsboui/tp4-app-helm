@@ -1,7 +1,16 @@
+# Python virtual environment
 .venv/
 __pycache__/
+
+# Test coverage reports
 coverage.xml
 .coverage
+
+# SonarQube scanner files
 .scannerwork/
-zap-report.*
+
+# ZAP reports
+zap.*
+
+# GitOps repo cloned by the pipeline
 gitops/

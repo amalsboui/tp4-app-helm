@@ -1,6 +1,6 @@
 replicaCount: 1
 image:
-  repository: YOUR_DOCKERHUB_USER/tp4-app   # ← change this
+  repository: hophopp/tp4-app   
   tag: latest
 resources:
   requests: { cpu: 50m, memory: 64Mi }

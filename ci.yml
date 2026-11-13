@@ -6,6 +6,7 @@ on:
 jobs:
   pipeline:
     runs-on: self-hosted      
+    env:
       IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/tp4-app
       TAG: v${{ github.sha }} # image tag = commit id
 
