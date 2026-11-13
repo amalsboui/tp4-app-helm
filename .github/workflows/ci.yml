@@ -77,7 +77,7 @@ jobs:
           mkdir -p ~/zap-reports
           cp zap.html ~/zap-reports/zap-$TAG.html || true
 
-      # 11. Everything passed → put the new version in the GitOps repo
+      # 11. 
       - name: Update GitOps repo
         run: |
           git clone https://x-access-token:${{ secrets.GITOPS_TOKEN }}@github.com/${{ github.repository_owner }}/tp4-gitops.git gitops
@@ -86,4 +86,3 @@ jobs:
           cd gitops
           git config user.email "ci@bot" && git config user.name "ci-bot"
           git add . && git commit -m "deploy $TAG" && git push
-          
