@@ -80,7 +80,7 @@ jobs:
       # 11. Everything passed → put the new version in the GitOps repo
       - name: Update GitOps repo
         run: |
-          git clone https://x-access-token:${{ secrets.GITOPS_TOKEN }}@github.com/${{ github.repository_owner }}/k8s-gitops-helm-values.git gitops
+          git clone https://x-access-token:${{ secrets.GITOPS_TOKEN }}@github.com/${{ github.repository_owner }}/tp4-gitops.git gitops
           rm -rf gitops/my-app && cp -r chart gitops/my-app
           sed -i "s|tag:.*|tag: $TAG|" gitops/my-app/values.yaml
           cd gitops
