@@ -73,10 +73,9 @@ jobs:
       # 10. Always keep the ZAP report
       - name: Save ZAP report
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: zap-report
-          path: zap.html
+        run: |
+          mkdir -p ~/zap-reports
+          cp zap.html ~/zap-reports/zap-$TAG.html || true
 
       # 11. Everything passed → put the new version in the GitOps repo
       - name: Update GitOps repo
