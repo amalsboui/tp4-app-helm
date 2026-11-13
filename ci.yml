@@ -1,0 +1,88 @@
+name: CI
+on:
+  push:
+    branches: [main]          
+
+jobs:
+  pipeline:
+    runs-on: self-hosted      
+      IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/tp4-app
+      TAG: v${{ github.sha }} # image tag = commit id
+
+    steps:
+      # 1. Get the code
+      - uses: actions/checkout@v4
+
+      # 2. Check the Helm chart
+      - name: Helm lint
+        run: helm lint ./chart
+
+      # 3. Run the unit tests + measure coverage
+      - name: Unit tests
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install -r app/requirements.txt pytest pytest-cov
+          .venv/bin/pytest --cov=app --cov-report=xml app/
+
+      # 4. SonarQube analysis (fails if the Quality Gate fails)
+      - name: SonarQube
+        run: |
+          docker run --rm --network host -v "$PWD:/usr/src" \
+            -e SONAR_HOST_URL=http://localhost:9000 \
+            -e SONAR_TOKEN=${{ secrets.SONAR_TOKEN }} \
+            sonarsource/sonar-scanner-cli
+
+      # 5. Build the image and push it to Docker Hub
+      - name: Docker login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push image
+        run: |
+          docker build -t $IMAGE:$TAG .
+          docker push $IMAGE:$TAG
+
+      # 6. Deploy a temporary copy in staging
+      - name: Deploy to staging
+        run: helm install my-app-staging ./chart -n staging --set image.tag=$TAG --wait
+
+      # 7. Scan it with OWASP ZAP
+      - name: ZAP scan
+        run: |
+          kubectl port-forward svc/my-app-staging 8080:80 -n staging &
+          sleep 5
+          chmod a+w .
+          docker run --rm --network host -v "$PWD:/zap/wrk" ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py -t http://localhost:8080 -J zap.json -r zap.html || true
+
+      # 8. Stop the pipeline if ZAP found any High vulnerability
+      - name: Check ZAP results
+        run: |
+          HIGH=$(jq '[.site[].alerts[] | select(.riskcode=="3")] | length' zap.json)
+          echo "High vulnerabilities: $HIGH"
+          [ "$HIGH" -eq 0 ]
+
+      # 9. Always delete staging (even if something failed)
+      - name: Remove staging
+        if: always()
+        run: helm uninstall my-app-staging -n staging || true
+
+      # 10. Always keep the ZAP report
+      - name: Save ZAP report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: zap.html
+
+      # 11. Everything passed → put the new version in the GitOps repo
+      - name: Update GitOps repo
+        run: |
+          git clone https://x-access-token:${{ secrets.GITOPS_TOKEN }}@github.com/${{ github.repository_owner }}/k8s-gitops-helm-values.git gitops
+          rm -rf gitops/my-app && cp -r chart gitops/my-app
+          sed -i "s|tag:.*|tag: $TAG|" gitops/my-app/values.yaml
+          cd gitops
+          git config user.email "ci@bot" && git config user.name "ci-bot"
+          git add . && git commit -m "deploy $TAG" && git push
